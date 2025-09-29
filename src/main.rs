@@ -4,7 +4,7 @@
 extern crate native_windows_gui as nwg;
 extern crate native_windows_derive as nwd;
 
-use std::{ arch::x86_64, fs::File, io::Error, ops::Range, path::Path, process::{ExitStatus, Output}, sync::{Arc, RwLock, RwLockReadGuard}};
+use std::{ arch::x86_64, fs::{self, File}, io::Error, ops::Range, path::Path, process::{ExitStatus, Output}, sync::{Arc, RwLock, RwLockReadGuard}};
 
 use configparser::{ini::Ini};
 use nwd::NwgUi;
@@ -187,6 +187,9 @@ impl ImagingApp {
             drop(inner_state);
             sender.notice();
 
+            //Remove the WIM
+            let _ = fs::remove_file(wim_path.clone());
+
 
             //Apply bootloader
             let bootloader_result = ImagingApp::install_bootloader();
@@ -308,7 +311,7 @@ impl ImagingApp {
                     
                     //Download to the staging directory
                     let local_zip_path = format!("{}\\stage.zip",&tmp_files_path);
-                    ImagingApp::download_url(copy_url.clone(), Path::new(&local_zip_path));
+                    let _ = ImagingApp::download_url(copy_url.clone(), Path::new(&local_zip_path));
 
                     //Extract them over the OS drive
                     let mut stage_zip_archive = match zip::ZipArchive::new(File::open(&local_zip_path).unwrap()) {
@@ -319,6 +322,8 @@ impl ImagingApp {
                         Ok(_) => (),
                         Err(e) => return Err(e.to_string())
                     };
+
+                    let _ = fs::remove_file(local_zip_path.clone());
 
 
                 }
