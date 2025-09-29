@@ -1,0 +1,16 @@
+[package]
+name = "http_imager_ui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+native-windows-gui = "1.0.12"
+native-windows-derive = "1.0.3"
+configparser = "3.1.0"
+futures = { version = "0.3.31", features = ["thread-pool"] }
+ureq = "3.1.2"
+sysinfo = "0.37.0"
+zip = "5.1.1"
+
+[[example]]
+name = "disk_info" # examples/disk_info.rs
