@@ -13,7 +13,7 @@ This tool provides a way to image with a WIM on a webserver from a Windows PE en
 1. Copy over a custom winpeshl.ini to tell Windows PE to configure the network then launch the imaging UI. An example one is provided at [WinPEShl.ini](example/Winpeshl.ini)
 1. Save the updated WIM
   `Dismount-WindowsImage -Save -Path C:\Temp\WinPE`
-1. Upload the WIM to your HTTP server or media and boot from it to check it works like you expect
+1. Upload the WIM to your HTTP server or media and boot from it.
 
 
   ## Settings.ini reference
@@ -27,7 +27,7 @@ This tool provides a way to image with a WIM on a webserver from a Windows PE en
 #### [os]
 | Setting | Value |
 | -- | -- |
-|download_url|Where to download the installed WIM from Ex: `http://127.0.0.1/install.wim`|
+|download_url|Where to download the installed WIM from Ex: `http://192.0.0.1/install.wim`|
 |index|The WIM index to apply to the W: drive. Defaults to `1`|
 
 #### [deploy]
