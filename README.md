@@ -8,7 +8,7 @@ This tool provides a way to image with a WIM on a webserver from a Windows PE en
 1. Create a directory for the wim to be edited in such as `C:\Temp\winpe`
 1. Launch command prompt/terminal as Administrator and use DISM to mount the wim for  editing
     `Mount-WindowsImage -ImagePath winpe.wim -Path C:\Temp\WinPE -Index 1`
-1. Copy over the EXE as well as the [Settings.ini](example/Settings.ini) and [DiskPart.txt](example/DiskPart.txt) to C:\Temp\WinPE
+1. Copy over the EXE as well as the [Settings.ini](example/Settings.ini) and [DiskPart.txt](example/DiskPart.txt) to C:\Temp\WinPE\Windows\system32
 1. Edit Settings.ini as you see fit
 1. Copy over a custom winpeshl.ini to tell Windows PE to configure the network then launch the imaging UI. An example one is provided at [WinPEShl.ini](example/Winpeshl.ini)
 1. Save the updated WIM
