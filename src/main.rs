@@ -4,7 +4,7 @@
 extern crate native_windows_gui as nwg;
 extern crate native_windows_derive as nwd;
 
-use std::{ arch::x86_64, fs::{self, File}, io::Error, ops::Range, path::Path, process::{ExitStatus, Output}, sync::{Arc, RwLock, RwLockReadGuard}};
+use std::{  fs::{self, File}, io::Error, ops::Range, path::Path, process::{ExitStatus, Output}, sync::{Arc, RwLock}};
 
 use configparser::{ini::Ini};
 use nwd::NwgUi;
@@ -111,7 +111,7 @@ impl ImagingApp {
         let image_index_config = config.get("os","index").unwrap_or("1".to_string());
         self.image_index.set_text(image_index_config.as_str());
 
-        if !ImagingApp::is_autoinstall() {
+        if ImagingApp::is_autoinstall() {
             self.install_windows();
         }
     }
@@ -134,9 +134,9 @@ impl ImagingApp {
                         _ => self.wim_temp_path.text()
         };
 
-        let wim_image_index = match (self.image_index.text().parse::<u8>())  {
+        let wim_image_index = match self.image_index.text().parse::<u8>()  {
                         Ok(x) => x,
-                        Err(x) => 1
+                        Err(_) => 1
         };
 
         if !ImagingApp::is_autoinstall() {
@@ -202,7 +202,7 @@ impl ImagingApp {
             
             let mut inner_state = status_state.write().unwrap();
             *inner_state = match bootloader_result {
-                Ok(x) => "Bootloaded".to_string(),
+                Ok(_) => "Bootloaded".to_string(),
                 Err(x) => x,
             };
             drop(inner_state);
@@ -212,7 +212,7 @@ impl ImagingApp {
             let apply_files_result = ImagingApp::install_staging_files(&temporary_files_path);
             let mut inner_state = status_state.write().unwrap();
             *inner_state = match apply_files_result {
-                Ok(x) => "Staged".to_string(),
+                Ok(_) => "Staged".to_string(),
                 Err(x) => x,
             };
             drop(inner_state);
@@ -310,7 +310,7 @@ impl ImagingApp {
 
                     //Only throw an error on 40web error  if we don't have a continue on flag set to allow people to still image unknown models.
                     match ImagingApp::check_url_valid(copy_url.clone()) {
-                        Ok(false) => {if(!continue_on_http_err) {return Err(format!("Error with download from {} - Zip may not exist or server may be down.",copy_url))}},
+                        Ok(false) => {if !continue_on_http_err {return Err(format!("Error with download from {} - Zip may not exist or server may be down.",copy_url))}},
                         Ok(true) => (),
                         Err(_) => return Err(format!("Error with download from {}.",copy_url))
                     }
