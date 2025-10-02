@@ -120,6 +120,7 @@ impl ImagingApp {
 
         if !ImagingApp::check_url_valid(self.download_url.text()).is_ok_and(|v| v) {
             nwg::modal_info_message(&self.window, "Invalid URL", &format!("The URL {} is not valid", self.download_url.text()));
+            self.set_ui(false);
             return
         }
 
