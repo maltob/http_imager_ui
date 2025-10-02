@@ -69,6 +69,7 @@ pub struct ImagingApp {
     #[nwg_layout_item(layout: grid, row: 6, col: 2, col_span: 3)]
     image_index: nwg::TextInput,
 
+
     #[nwg_control]
     #[nwg_events( OnNotice: [ImagingApp::on_notice] )]
     notice: nwg::Notice,
@@ -109,6 +110,10 @@ impl ImagingApp {
         // Default to index 1 for the WIM
         let image_index_config = config.get("os","index").unwrap_or("1".to_string());
         self.image_index.set_text(image_index_config.as_str());
+
+        if !ImagingApp::is_autoinstall() {
+            self.install_windows();
+        }
     }
 
 
