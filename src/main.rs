@@ -8,11 +8,11 @@ use std::{  fs::{self, File}, io::Error, ops::Range, path::Path, process::{ExitS
 
 use configparser::{ini::Ini};
 use nwd::NwgUi;
-use nwg::{ MessageChoice, MessageParams, NativeUi};
+use nwg::{ ImageData, MessageChoice, MessageParams, NativeUi};
 
 use std::thread;
 use std::process::Command;
-use sysinfo::{Disks,Product};
+use sysinfo::{Disks, Networks, Product};
 
 #[derive(Default, NwgUi)]
 pub struct ImagingApp {
@@ -77,6 +77,10 @@ pub struct ImagingApp {
     #[nwg_events( OnNotice: [ImagingApp::on_notice] )]
     notice: nwg::Notice,
 
+    #[nwg_control(interval: Duration::from_millis(10_000))]
+    #[nwg_events( OnNotice: [ImagingApp::update_status_bar] )]
+    status_timer: nwg::AnimationTimer,
+
     compute: Arc<RwLock<String>>,
 
 }
@@ -117,6 +121,8 @@ impl ImagingApp {
         // Look for a network check URL
         let network_check_url = config.get("network","check_url").unwrap_or(dl_url.to_string());
         
+        self.update_status_bar();
+        self.status_timer.start();
         if ImagingApp::is_autoinstall() {
             match ImagingApp::wait_for_network(30, &network_check_url) {
                 Ok(true) => self.install_windows(),
@@ -239,6 +245,37 @@ impl ImagingApp {
         //
     }
 
+    fn update_status_bar(self: &ImagingApp) {
+        self.status_label.set_text(format!("IP Address - {}; First Disk - {}",
+                    ImagingApp::get_first_ip().unwrap_or("Undefined".to_string()),
+                    ImagingApp::get_disks().unwrap_or("No disks found".to_string())).as_str());
+    }
+
+    fn get_first_ip() -> Result<String,()> {
+        let networks = Networks::new_with_refreshed_list();
+        for (_interface_name, data) in &networks {
+            let networks = data.ip_networks();
+            for ipnet in networks {
+                //Filter out loopbacks and link locals
+                if !ipnet.addr.is_loopback() && !ipnet.addr.is_multicast() && !ipnet.addr.is_unspecified() && !ipnet.addr.to_string().starts_with("169.") && !ipnet.addr.to_string().starts_with("fe80::") && data.total_packets_received() > 1_000 {
+                    return Ok(format!("{}/{}",ipnet.addr,ipnet.prefix));
+                }
+                    
+            }
+        }
+        return  Err(());
+    }
+
+    fn get_disks() -> Result<String,()> {
+        let disks = Disks::new_with_refreshed_list();
+        if let Some( disk) = disks.first() {
+            if !disk.is_removable() && !disk.is_read_only() && disk.available_space() > 8_000_000_000  {
+                return Ok(format!("{} {} {} GB", disk.name().display(), disk.mount_point().display(), disk.total_space()/1_000_000_000));
+            }
+        }
+        return  Err(());
+    }
+
     fn wait_for_network( timeout: u32, check_url: &String) -> Result<bool,String> {
         let target_time = SystemTime::now() + Duration::new(timeout.into(), 0);
         while !ImagingApp::check_url_valid(check_url.to_string()).is_ok() && SystemTime::now() < target_time {
@@ -248,7 +285,7 @@ impl ImagingApp {
     }
     
     fn is_pe() -> bool {
-        Path::new("X:\\").exists()
+        Path::new("X:\\").exists() && !Path::new("C:\\Program Files\\WindowsApps").exists()
     }
 
     fn apply_wim(wim_path: &str, image_index: &u8) -> Result<Output,Error> {
@@ -436,7 +473,12 @@ impl ImagingApp {
                         Err(_) => return Err(format!("Error with download from {}.",copy_url))
                     }
 
-
+                    //Create the Panther path if it doesn't exist
+                    if !Path::new("W:\\Windows\\Panther\\").exists() {
+                        let _ = fs::create_dir_all("W:\\Windows\\Panther\\");
+                    }
+                    
+                    
                     //Download the unattend
                     let local_unattend_path = "W:\\Windows\\Panther\\unattend.xml";
                     let _ = ImagingApp::download_url(copy_url.clone(), Path::new(&local_unattend_path));
