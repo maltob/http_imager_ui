@@ -4,7 +4,7 @@
 extern crate native_windows_gui as nwg;
 extern crate native_windows_derive as nwd;
 
-use std::{  fs::{self, File}, io::Error, ops::Range, path::Path, process::{ExitStatus, Output}, sync::{Arc, RwLock}};
+use std::{  fs::{self, File}, io::Error, ops::Range, path::Path, process::{ExitStatus, Output}, sync::{Arc, RwLock}, thread::sleep, time::{Duration, SystemTime}};
 
 use configparser::{ini::Ini};
 use nwd::NwgUi;
@@ -69,6 +69,9 @@ pub struct ImagingApp {
     #[nwg_layout_item(layout: grid, row: 6, col: 2, col_span: 3)]
     image_index: nwg::TextInput,
 
+    #[nwg_control(text: "Status: Unknown")]
+    #[nwg_layout_item(layout: grid, row: 7, col: 0, col_span:5)]
+    status_label: nwg::Label,
 
     #[nwg_control]
     #[nwg_events( OnNotice: [ImagingApp::on_notice] )]
@@ -111,8 +114,18 @@ impl ImagingApp {
         let image_index_config = config.get("os","index").unwrap_or("1".to_string());
         self.image_index.set_text(image_index_config.as_str());
 
+        // Look for a network check URL
+        let network_check_url = config.get("network","check_url").unwrap_or(dl_url.to_string());
+        
         if ImagingApp::is_autoinstall() {
-            self.install_windows();
+            match ImagingApp::wait_for_network(30, &network_check_url) {
+                Ok(true) => self.install_windows(),
+                _ => {
+                    nwg::modal_info_message(&self.window, "Error installing", "Failed to verify network connectivity for install. Please ensure network connection is correct");
+                    ()
+                }
+            };
+            
         }
     }
 
@@ -208,6 +221,9 @@ impl ImagingApp {
             drop(inner_state);
             sender.notice();
 
+            //Apply the unattend file
+            let _ = ImagingApp::download_and_apply_unattend();
+
             //Extract any override files
             let apply_files_result = ImagingApp::install_staging_files(&temporary_files_path);
             let mut inner_state = status_state.write().unwrap();
@@ -221,6 +237,14 @@ impl ImagingApp {
         }));
 
         //
+    }
+
+    fn wait_for_network( timeout: u32, check_url: &String) -> Result<bool,String> {
+        let target_time = SystemTime::now() + Duration::new(timeout.into(), 0);
+        while !ImagingApp::check_url_valid(check_url.to_string()).is_ok() && SystemTime::now() < target_time {
+            sleep( Duration::new(2,0));
+        }
+        Ok(ImagingApp::check_url_valid(check_url.to_string()).is_ok())
     }
     
     fn is_pe() -> bool {
@@ -297,7 +321,7 @@ impl ImagingApp {
             },
             None => ()
         }
-        let continue_on_http_err = config.getbool("deploy","stage_download_continue_on_error").unwrap_or(Some(false)).unwrap_or(false);
+        let continue_on_http_err = config.getbool("network","download_continue_on_error").unwrap_or(Some(false)).unwrap_or(false);
         // Check if there is a zip we should download and extract
         match config.get("deploy", "stage_download_zip") {
             Some(url) => {
@@ -313,6 +337,11 @@ impl ImagingApp {
                         Ok(false) => {if !continue_on_http_err {return Err(format!("Error with download from {} - Zip may not exist or server may be down.",copy_url))}},
                         Ok(true) => (),
                         Err(_) => return Err(format!("Error with download from {}.",copy_url))
+                    }
+
+                    //Make the temporary files path if needed
+                    if !Path::new(tmp_files_path).exists() {
+                        let _ = fs::create_dir_all(tmp_files_path);
                     }
                     
                     //Download to the staging directory
@@ -337,7 +366,95 @@ impl ImagingApp {
             None => ()
         }
 
+        // Check if there is a zip we should download and extract for drivers
+        match config.get("deploy", "drivers_download_zip") {
+            Some(url) => {
+                if url.is_empty() {
+                    // No path - Assume we don't have anything to copy
+                    ()
+                }else {
+                    
+                    let copy_url = ImagingApp::sub_system_info_vars(&url);
+
+                    //Only throw an error on 40web error  if we don't have a continue on flag set to allow people to still image unknown models.
+                    match ImagingApp::check_url_valid(copy_url.clone()) {
+                        Ok(false) => {if !continue_on_http_err {return Err(format!("Error with download from {} - Zip may not exist or server may be down.",copy_url))}},
+                        Ok(true) => (),
+                        Err(_) => return Err(format!("Error with download from {}.",copy_url))
+                    }
+
+                    //Make the temporary files path if needed
+                    if !Path::new(tmp_files_path).exists() {
+                        let _ = fs::create_dir_all(tmp_files_path);
+                    }
+                    
+                    //Download to the staging directory
+                    let local_zip_path = format!("{}\\drivers.zip",&tmp_files_path);
+                    let _ = ImagingApp::download_url(copy_url.clone(), Path::new(&local_zip_path));
+
+                    //Extract them over the OS drive
+                    let mut stage_zip_archive = match zip::ZipArchive::new(File::open(&local_zip_path).unwrap()) {
+                        Ok(r) => r,
+                        Err(e) => return Err(e.to_string())
+                    };
+                    match stage_zip_archive.extract("W:\\") {
+                        Ok(_) => (),
+                        Err(e) => return Err(e.to_string())
+                    };
+
+                    let _ = fs::remove_file(local_zip_path.clone());
+
+
+                }
+            },
+            None => ()
+        }
+
         Ok(())
+    }
+
+    fn download_and_apply_unattend() -> Result<bool,String> {
+
+        let mut config = Ini::new();
+        if Path::new("Settings.ini").exists() {
+            _  = config.load("Settings.ini");
+        }
+
+        let continue_on_http_err = config.getbool("network","download_continue_on_error").unwrap_or(Some(false)).unwrap_or(false);
+
+         match config.get("deploy", "unattend_download_path") {
+            Some(url) => {
+                if url.is_empty() {
+                    // No path - Assume we don't have anything to copy
+                    return Ok(false)
+                }else {
+                    //Check the file exists
+                    let copy_url = ImagingApp::sub_system_info_vars(&url);
+                    match ImagingApp::check_url_valid(copy_url.clone()) {
+                        Ok(false) => {if !continue_on_http_err {return Err(format!("Error with download of unattend from {} - XML may not exist or may be down.",copy_url))}},
+                        Ok(true) => (),
+                        Err(_) => return Err(format!("Error with download from {}.",copy_url))
+                    }
+
+
+                    //Download the unattend
+                    let local_unattend_path = "W:\\Windows\\Panther\\unattend.xml";
+                    let _ = ImagingApp::download_url(copy_url.clone(), Path::new(&local_unattend_path));
+                    let apply_result = Command::new("dism.exe").args(["/Image:W:\\".to_string(),format!("/Apply-Unattend:{}",&local_unattend_path).to_string()]).output();
+                    match apply_result {
+                        Ok(_) => (),
+                        Err(e) => return Err(format!("Error with local copy {} . Tried from {}",e.raw_os_error().unwrap().to_string(),&local_unattend_path))
+                    };
+
+                    let _ = fs::remove_file(local_unattend_path);
+                }
+         },
+         None => return Ok(false)
+
+
+        }
+        Ok(true)
+        
     }
 
     fn sub_system_info_vars (str: &String) -> String {
