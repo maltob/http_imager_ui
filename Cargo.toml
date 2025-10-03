@@ -11,6 +11,3 @@ futures = { version = "0.3.31", features = ["thread-pool"] }
 ureq = "3.1.2"
 sysinfo = "0.37.0"
 zip = "5.1.1"
-
-[[example]]
-name = "disk_info" # examples/disk_info.rs
