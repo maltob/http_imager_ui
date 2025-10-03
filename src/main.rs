@@ -34,7 +34,7 @@ pub struct ImagingApp {
     #[nwg_control(flags:"DISABLED")]
     #[nwg_layout_item(layout: grid, col: 0, row: 2, col_span: 5)]
     install_progress: nwg::ProgressBar,
-    #[nwg_control(flags:"DISABLED")]
+    #[nwg_control(flags:"DISABLED", text:"Started")]
     #[nwg_layout_item(layout: grid, col: 0, row: 3, col_span: 5)]
     install_status: nwg::Label,
 
@@ -557,23 +557,23 @@ impl ImagingApp {
         };
         match data.as_str() {
             "Downloaded" => { 
-                self.install_progress.advance_delta(10); 
+                self.install_progress.advance_delta(25); 
                 self.install_status.set_text("Unpacking WIM");
             },
             "DiskWiped" => { 
-                self.install_progress.advance_delta(10);
+                self.install_progress.advance_delta(5);
                 self.install_status.set_text("Downloading");
             },
             "Extracted" => { 
-                self.install_progress.advance_delta(10);
+                self.install_progress.advance_delta(25);
                 self.install_status.set_text("Installing bootloader");
             },
             "Bootloaded" => { 
-                self.install_progress.advance_delta(10);
+                self.install_progress.advance_delta(15);
                 self.install_status.set_text("Checking for any staging files");
             },
             "Staged" => { 
-                self.install_progress.advance_delta(10);
+                self.install_progress.advance_delta(15);
                 self.install_status.set_text("Files are staged, we are ready to reboot");
                 if !ImagingApp::is_autoinstall() {
                     nwg::modal_info_message(&self.window, "Imaging Complete", "Click Ok / close this dialog to exit");
