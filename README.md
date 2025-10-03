@@ -22,7 +22,7 @@ This tool provides a way to image with a WIM on a webserver from a Windows PE en
 | -- | -- |
 |format_script|Defaults to `DiskPart.txt`, but can point to a custom script with different parameters if needed. The example script will place windows on the `W:` drive during PE|
 |temp_wim_path|Location to store the WIM, should be large enough to fit the install.wim. Defaults to W: drive|
-|temp_path|Location to store temporary files such as the stage.zip during download. Defaults to `W:\windows\temp`|
+|temp_file_path|Location to store temporary files such as the stage.zip during download. Defaults to `W:\windows\temp`|
 
 #### [os]
 | Setting | Value |
@@ -35,5 +35,12 @@ This tool provides a way to image with a WIM on a webserver from a Windows PE en
 | -- | -- |
 |auto_install| 0 or 1 to have the install wipe and run atuomatically with no prompts |
 |stage_folder|A path to copy from the WIM to the install drive, it will overwrite all existing files. Ex: X:\stage |
-|stage_download_zip|URL to download from - supports replacing {vendor} and {model} in URL to allow downloading specific drivers for a model - Ex: http://127.0.0.1/{vendor}-{model}.zip|
-|stage_download_continue_on_error|0 or 1 to have the installer for the download zip option above continue the installeven with HTTP error such as the server is down or the file doesn't exist|
+|stage_download_zip|URL to download from - supports replacing {vendor} and {model} in URL to allow downloading specific files for a model - Ex: http://127.0.0.1/{vendor}-{model}.zip|
+|driver_download_zip|URL to download from - supports replacing {vendor} and {model} in URL to allow downloading specific drivers for a model - Ex: http://127.0.0.1/{vendor}-{model}.zip|
+|unattend_download_path|URL to download from - supports replacing {vendor} and {model} in URL to allow downloading specific unattend configuration for a model - Ex: http://127.0.0.1/unattend.xml|
+
+#### [network]
+| Setting | Value |
+| -- | -- |
+| check_url | URL for the system to verify it has network connectivity against, defaults to the download_url if blank |
+|download_continue_on_error|0 or 1 to have the installer for the download zip option above continue the installeven with HTTP error such as the server is down or the file doesn't exist|
