@@ -285,7 +285,7 @@ impl ImagingApp {
     }
     
     fn is_pe() -> bool {
-        Path::new("X:\\").exists() && !Path::new("C:\\Program Files\\WindowsApps").exists()
+        Path::new("X:\\").exists() && Path::new("X:\\Windows\\system32\\winpeshl.exe").exists()
     }
 
     fn apply_wim(wim_path: &str, image_index: &u8) -> Result<Output,Error> {
