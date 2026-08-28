@@ -9,9 +9,8 @@ select disk 0
 clean
 convert gpt
 rem == 1. System partition =========================
-create partition efi size=200
-rem    ** NOTE: For Advanced Format 4Kn drives,
-rem               change this value to size = 300 ** 
+create partition efi size=300
+rem    300 MB also satisfies the 4Kn EFI minimum.
 format quick fs=fat32 label="System"
 assign letter="S"
 rem == 2. Microsoft Reserved (MSR) partition =======
@@ -23,7 +22,7 @@ rem ==    b. Create space for the recovery tools ===
 rem       ** Update this size to match the size of
 rem          the recovery tools (winre.wim)
 rem          plus some free space.
-shrink minimum=500
+shrink minimum=1024
 rem ==    c. Prepare the Windows partition ========= 
 format quick fs=ntfs label="Windows"
 assign letter="W"

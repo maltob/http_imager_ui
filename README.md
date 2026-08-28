@@ -29,11 +29,21 @@ This tool provides a way to image with a WIM on a webserver from a Windows PE en
 | -- | -- |
 |download_url|Where to download the installed WIM from Ex: `http://192.0.0.1/install.wim`|
 |index|The WIM index to apply to the W: drive. Defaults to `1`|
+|size|Optional expected WIM size in bytes; the transfer is rejected if it differs|
+|sha256|Optional expected SHA-256 for the WIM; when supplied, the download is verified|
+
+#### [target] settings
+
+| Setting | Value |
+| -- | -- |
+|disk|Physical disk number to erase. Auto-install requires this value; interactive mode displays it in the confirmation dialog|
+|serial|Optional disk serial substring used to reject a mismatched target|
 
 #### [deploy]
 | Setting | Value |
 | -- | -- |
-|auto_install| 0 or 1 to have the install wipe and run atuomatically with no prompts |
+|auto_install| 0 or 1 to have the install wipe and run automatically with no prompts. Auto-install requires an explicit target disk|
+|auto_reboot| 0 or 1 to reboot automatically after all verification checks pass|
 |stage_folder|A path to copy from the WIM to the install drive, it will overwrite all existing files. Ex: X:\stage |
 |stage_download_zip|URL to download from - supports replacing {vendor} and {model} in URL to allow downloading specific files for a model - Ex: http://127.0.0.1/{vendor}-{model}.zip|
 |driver_download_zip|URL to download from - supports replacing {vendor} and {model} in URL to allow downloading specific drivers for a model - Ex: http://127.0.0.1/{vendor}-{model}.zip|
@@ -43,4 +53,14 @@ This tool provides a way to image with a WIM on a webserver from a Windows PE en
 | Setting | Value |
 | -- | -- |
 | check_url | URL for the system to verify it has network connectivity against, defaults to the download_url if blank |
-|download_continue_on_error|0 or 1 to have the installer for the download zip option above continue the installeven with HTTP error such as the server is down or the file doesn't exist|
+|download_continue_on_error|0 or 1 to continue when an optional stage, driver, or unattend download fails. The WIM download is always fatal on failure|
+
+The installer performs a preflight network check with a ranged `GET`, downloads to a partial file, verifies the expected size/hash, checks the selected WIM index, and stops at the first failed deployment stage. Keep the generated log output available when diagnosing a failed machine. Do not power off the machine after the partition step until the deployment has either completed verification or reported a recoverable failure.
+
+## Silent autorun
+
+Set auto_install=1 and configure [target] disk in Settings.ini, then launch:
+
+    http_imager_ui.exe --silent
+
+Silent mode initializes no window and no message boxes. It writes progress and errors to X:\http-imager.log and X:\http-imager-silent.log, returns exit code 0 only after verification succeeds, and honors auto_reboot=1 after a successful deployment. An optional --config C:\path\Settings.ini argument selects a different configuration file. The WIM sha256 and size settings are optional; when supplied, the download is verified.
